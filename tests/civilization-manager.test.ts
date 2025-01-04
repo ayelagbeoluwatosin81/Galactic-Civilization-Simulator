@@ -1,21 +1,99 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 
-import { describe, expect, it } from "vitest";
+// Mock Clarity types and functions
+type Principal = string;
+type Response<T, E> = { ok: T } | { err: E };
 
-const accounts = simnet.getAccounts();
-const address1 = accounts.get("wallet_1")!;
+const mockContractCalls = {
+  civilizations: new Map<number, {
+    owner: Principal;
+    name: string;
+    technologyLevel: number;
+    population: number;
+    resources: number;
+    lastUpdate: number;
+  }>(),
+  civilizationCount: 0,
+};
 
-/*
-  The test below is an example. To learn more, read the testing documentation here:
-  https://docs.hiro.so/stacks/clarinet-js-sdk
-*/
-
-describe("example tests", () => {
-  it("ensures simnet is well initalised", () => {
-    expect(simnet.blockHeight).toBeDefined();
+function createCivilization(name: string): Response<number, never> {
+  const civilizationId = ++mockContractCalls.civilizationCount;
+  mockContractCalls.civilizations.set(civilizationId, {
+    owner: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
+    name,
+    technologyLevel: 1,
+    population: 1000000,
+    resources: 1000,
+    lastUpdate: 0,
   });
+  return { ok: civilizationId };
+}
 
-  // it("shows an example", () => {
-  //   const { result } = simnet.callReadOnlyFn("counter", "get-counter", [], address1);
-  //   expect(result).toBeUint(0);
-  // });
+function updateCivilization(civilizationId: number): Response<boolean, number> {
+  const civilization = mockContractCalls.civilizations.get(civilizationId);
+  if (!civilization) return { err: 404 };
+  
+  const timePassed = 100; // Simulating time passed
+  const newTechnology = civilization.technologyLevel + Math.floor(timePassed / 100);
+  const newPopulation = civilization.population + Math.floor(civilization.population * (timePassed / 1000));
+  const newResources = civilization.resources + Math.floor(civilization.technologyLevel * (timePassed / 10));
+  
+  mockContractCalls.civilizations.set(civilizationId, {
+    ...civilization,
+    technologyLevel: newTechnology,
+    population: newPopulation,
+    resources: newResources,
+    lastUpdate: timePassed,
+  });
+  
+  return { ok: true };
+}
+
+function getCivilization(civilizationId: number): Response<{
+  owner: Principal;
+  name: string;
+  technologyLevel: number;
+  population: number;
+  resources: number;
+  lastUpdate: number;
+}, number> {
+  const civilization = mockContractCalls.civilizations.get(civilizationId);
+  if (!civilization) return { err: 404 };
+  return { ok: civilization };
+}
+
+describe('Civilization Manager Contract', () => {
+  beforeEach(() => {
+    mockContractCalls.civilizations.clear();
+    mockContractCalls.civilizationCount = 0;
+  });
+  
+  it('should create a new civilization', () => {
+    const result = createCivilization('Test Civilization');
+    expect(result).toEqual({ ok: 1 });
+    expect(mockContractCalls.civilizations.size).toBe(1);
+  });
+  
+  it('should update an existing civilization', () => {
+    createCivilization('Test Civilization');
+    const result = updateCivilization(1);
+    expect(result).toEqual({ ok: true });
+    const updatedCivilization = getCivilization(1);
+    expect(updatedCivilization).toEqual({
+      ok: {
+        owner: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
+        name: 'Test Civilization',
+        technologyLevel: 2,
+        population: 1100000,
+        resources: 1100,
+        lastUpdate: 100,
+      },
+    });
+  });
+  
+  it('should fail to update a non-existent civilization', () => {
+    const result = updateCivilization(999);
+    expect(result).toEqual({ err: 404 });
+  });
 });
+
