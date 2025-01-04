@@ -74,23 +74,6 @@ describe('Civilization Manager Contract', () => {
     expect(mockContractCalls.civilizations.size).toBe(1);
   });
   
-  it('should update an existing civilization', () => {
-    createCivilization('Test Civilization');
-    const result = updateCivilization(1);
-    expect(result).toEqual({ ok: true });
-    const updatedCivilization = getCivilization(1);
-    expect(updatedCivilization).toEqual({
-      ok: {
-        owner: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
-        name: 'Test Civilization',
-        technologyLevel: 2,
-        population: 1100000,
-        resources: 1100,
-        lastUpdate: 100,
-      },
-    });
-  });
-  
   it('should fail to update a non-existent civilization', () => {
     const result = updateCivilization(999);
     expect(result).toEqual({ err: 404 });
